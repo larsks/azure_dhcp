@@ -1,0 +1,9 @@
+#!/bin/bash
+# 
+# Writes DHCP lease information into the cloud-init data
+# directory.
+
+MDFILE=/run/cloud-init/dhcpoptions
+
+cloud-init-dhcp-options
+

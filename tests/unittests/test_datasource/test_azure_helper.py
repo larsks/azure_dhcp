@@ -57,12 +57,12 @@ class TestFindEndpoint(TestCase):
     def test_missing_file(self):
         self.load_file.side_effect = IOError
         self.assertRaises(IOError,
-                          azure_helper.WALinuxAgentShim.find_endpoint)
+                          azure_helper.WALinuxAgentShim)
 
     def test_missing_special_azure_line(self):
         self.load_file.return_value = ''
         self.assertRaises(ValueError,
-                          azure_helper.WALinuxAgentShim.find_endpoint)
+                          azure_helper.WALinuxAgentShim)
 
     @staticmethod
     def _build_lease_content(encoded_address):
@@ -72,13 +72,21 @@ class TestFindEndpoint(TestCase):
             ' option unknown-245 {0};'.format(encoded_address),
             '}'])
 
+    def test_from_dhcp_client(self):
+        file_content = '\n'.join(['DHCP4_UNKNOWN_245=5:4:3:2'])
+        print(file_content)
+        self.load_file.return_value = file_content
+        shim = azure_helper.WALinuxAgentShim()
+        self.assertEqual('5.4.3.2', shim.find_endpoint())
+
     def test_latest_lease_used(self):
         encoded_addresses = ['5:4:3:2', '4:3:2:1']
         file_content = '\n'.join([self._build_lease_content(encoded_address)
                                   for encoded_address in encoded_addresses])
         self.load_file.return_value = file_content
+        shim = azure_helper.WALinuxAgentShim()
         self.assertEqual(encoded_addresses[-1].replace(':', '.'),
-                         azure_helper.WALinuxAgentShim.find_endpoint())
+                         shim.find_endpoint())
 
 
 class TestExtractIpAddressFromLeaseValue(TestCase):

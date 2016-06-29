@@ -1,0 +1,15 @@
+#!/bin/bash
+# 
+# Writes DHCP lease information into the cloud-init data
+# directory.
+
+MDFILE=/run/cloud-init/dhcpoptions
+
+if [ ! -d $(dirname $MDFILE) ]; then
+        mkdir -p $(dirname $MDFILE)
+fi
+if [ -f $MDFILE ]; then
+        rm -f $MDFILE
+fi
+
+env | grep '^new_\|^DHCP4_' > $MDFILE

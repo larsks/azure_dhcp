@@ -189,6 +189,7 @@ class WALinuxAgentShim(object):
 
     def __init__(self):
         LOG.debug('WALinuxAgentShim instantiated...')
+        self.dhcpoptions = os.path.join("/run/cloud-init", "dhcpoptions")
         self.endpoint = self.find_endpoint()
         self.openssl_manager = None
         self.values = {}
@@ -212,14 +213,30 @@ class WALinuxAgentShim(object):
             packed_bytes = unescaped_value.encode('utf-8')
         return socket.inet_ntoa(packed_bytes)
 
-    @staticmethod
-    def find_endpoint():
+    def find_endpoint(self):
         LOG.debug('Finding Azure endpoint...')
-        content = util.load_file('/var/lib/dhcp/dhclient.eth0.leases')
-        value = None
-        for line in content.splitlines():
-            if 'unknown-245' in line:
-                value = line.strip(' ').split(' ', 2)[-1].strip(';\n"')
+        try:
+            # Option-245 stored in /run/cloud-init/dhcpoptions by dhclient
+            content = util.load_file(self.dhcpoptions)
+            dhcp_options = dict(line.split('=', 1) for line in
+                                content.strip().split("\n"))
+
+            # Depending on the environment, the option can be
+            # preceded by DHCP4 or new
+            value = dhcp_options.get("DHCP4_UNKNOWN_245") if \
+                dhcp_options.get("new_unknown_245") is None else \
+                dhcp_options.get("new_unknown_245")
+            LOG.debug("Option-245 has value of {}".format(value))
+        except Exception:
+            # Fallback and check the leases file if unsuccessful
+            LOG.debug("Unable to find {}.  Falling back to check lease "
+                      "files".format(self.dhcpoptions))
+            content = util.load_file('/var/lib/dhcp/dhclient.eth0.leases')
+            value = None
+            for line in content.splitlines():
+                if 'unknown-245' in line:
+                    value = line.strip(' ').split(' ', 2)[-1].strip(';\n"')
+        LOG.debug(value)
         if value is None:
             raise ValueError('No endpoint found in DHCP config.')
         endpoint_ip_address = WALinuxAgentShim.get_ip_from_lease_value(value)
