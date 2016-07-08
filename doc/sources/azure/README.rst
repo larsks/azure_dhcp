@@ -12,11 +12,21 @@ information.  Additional information is obtained via interaction with the
 "endpoint".
 
 To find the endpoint, we now leverage the dhcp client's ability to log its
-known values on exit.  The endpoint servcer is special DHCP option 245.
+known values on exit.  The endpoint server is special DHCP option 245.
 Depending on your networking stack, this can be done
 by calling a script in /etc/dhcp/dhclient-exit-hooks or a file in
-/etc/NetworkManager/dispatcher.d.  Both of these call /usr/bin/cloud-init-log-dhcp
-which will write the client information to /run/cloud-init/dhcpoptions.
+/etc/NetworkManager/dispatcher.d.  Both of these call a python "binary"
+called 'cloud-init-dhclient-hook' (similar to cloud-init itself). This
+will write the client information in json format
+to /run/cloud-init/dhcpoptions.
+
+In order for cloud-init to leverage this method to find the endpoint, the
+cloud.cfg file must contain:
+
+datasource:
+  Azure:
+    set_hostname: False
+    agent_command: __builtin__
 
 If those files are not available, the fallback is to check the leases file
 for the endpoint server (again option 245).  On ubuntu, that can be seen in

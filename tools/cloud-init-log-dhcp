@@ -1,3 +1,5 @@
 #!/bin/bash
+# Writes DHCP lease information into the cloud-init data directory.
 
-cloud-init-dhcp-options
+cloud-init-dhclient-hook
+
