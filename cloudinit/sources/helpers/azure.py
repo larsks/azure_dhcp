@@ -189,12 +189,13 @@ class WALinuxAgentShim(object):
         '  </Container>',
         '</Health>'])
 
-    def __init__(self):
+    def __init__(self, lease_file):
         LOG.debug('WALinuxAgentShim instantiated...')
         self.dhcpoptions = None
         self._endpoint = None
         self.openssl_manager = None
         self.values = {}
+        self.lease_file = lease_file
 
     def clean_up(self):
         if self.openssl_manager is not None:
@@ -208,7 +209,7 @@ class WALinuxAgentShim(object):
     @property
     def endpoint(self):
         if self._endpoint is None:
-            self._endpoint = self.find_endpoint()
+            self._endpoint = self.find_endpoint(self.lease_file)
         return self._endpoint
 
     @staticmethod
@@ -227,9 +228,9 @@ class WALinuxAgentShim(object):
         return socket.inet_ntoa(packed_bytes)
 
     @staticmethod
-    def _get_value_from_leases_file():
+    def _get_value_from_leases_file(lease_file):
         leases = []
-        content = util.load_file('/var/lib/dhcp/dhclient.eth0.leases')
+        content = util.load_file(lease_file)
         for line in content.splitlines():
             if 'unknown-245' in line:
                 leases.append(line.strip(' ').split(' ', 2)[-1].strip(';\n"'))
@@ -242,8 +243,12 @@ class WALinuxAgentShim(object):
     @staticmethod
     def _load_dhclient_json():
         dhcp_options = {}
-        hook_files = [os.path.join(WALinuxAgentShim._get_hooks_dir(), x)
-                      for x in os.listdir(WALinuxAgentShim._get_hooks_dir())]
+        hooks_dir = WALinuxAgentShim._get_hooks_dir()
+        if not os.path.exists(hooks_dir):
+            LOG.debug("%s not found.", hooks_dir)
+            return None
+        hook_files = [os.path.join(hooks_dir, x)
+                      for x in os.listdir(hooks_dir)]
         for hook_file in hook_files:
             try:
                 _file_dict = json.load(open(hook_file))
@@ -255,28 +260,34 @@ class WALinuxAgentShim(object):
 
     @staticmethod
     def _get_value_from_dhcpoptions(dhcp_options):
+        if dhcp_options is None:
+            return None
         # the MS endpoint server is given to us as DHPC option 245
         _value = None
         for interface in dhcp_options:
             _value = dhcp_options[interface].get('unknown_245', None)
             if _value is not None:
-                return _value
+                break
         return _value
 
     @staticmethod
-    def find_endpoint():
+    def find_endpoint(lease_file):
         LOG.debug('Finding Azure endpoint...')
         value = None
         # Option-245 stored in /run/cloud-init/dhclient.hooks/<ifc>.json
         # a dhclient exit hook that calls cloud-init-dhclient-hook
-
+        LOG.debug("Lease file %s found", lease_file)
         dhcp_options = WALinuxAgentShim._load_dhclient_json()
         value = WALinuxAgentShim._get_value_from_dhcpoptions(dhcp_options)
         if value is None:
             # Fallback and check the leases file if unsuccessful
             LOG.debug("Unable to find endpoint in dhclient logs. "
                       " Falling back to check lease files")
-            value = WALinuxAgentShim._get_value_from_leases_file()
+            if lease_file is None:
+                LOG.warn("No lease file was specified.")
+                value = None
+            else:
+                value = WALinuxAgentShim._get_value_from_leases_file(lease_file)
 
         if value is None:
             raise ValueError('No endpoint found.')
@@ -290,10 +301,11 @@ class WALinuxAgentShim(object):
         http_client = AzureEndpointHttpClient(self.openssl_manager.certificate)
         LOG.info('Registering with Azure...')
         attempts = 0
+        end_point = self.endpoint
         while True:
             try:
                 response = http_client.get(
-                    'http://{0}/machine/?comp=goalstate'.format(self.endpoint))
+                    'http://{0}/machine/?comp=goalstate'.format(end_point))
             except Exception:
                 if attempts < 10:
                     time.sleep(attempts + 1)
@@ -330,8 +342,8 @@ class WALinuxAgentShim(object):
         LOG.info('Reported ready to Azure fabric.')
 
 
-def get_metadata_from_fabric():
-    shim = WALinuxAgentShim()
+def get_metadata_from_fabric(lease_file):
+    shim = WALinuxAgentShim(lease_file)
     try:
         return shim.register_with_azure_and_fetch_data()
     finally:

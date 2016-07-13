@@ -1,36 +1,29 @@
 import os
-from cloudinit import stages
 import json
+from cloudinit import stages
 from cloudinit import log as logging
 
 
-class logDhclient():
+class LogDhclient():
 
     LOG = logging.getLogger(__name__)
 
     def __init__(self):
         self.hooks_dir = self._get_hooks_dir()
-        print(self.hooks_dir)
 
     @staticmethod
     def _get_hooks_dir():
         i = stages.Init()
         return os.path.join(i.paths.get_runpath(), 'dhclient.hooks')
 
-    def _check_hooks_dir(self):
+    def check_hooks_dir(self):
         if not os.path.exists(self.hooks_dir):
             os.makedirs(self.hooks_dir)
         else:
             hook_files = [os.path.join(self.hooks_dir, x)
                           for x in os.listdir(self.hooks_dir)]
-            print(hook_files)
-            if len(hook_files) > 0:
-                for hook_file in hook_files:
-                    os.remove(hook_file)
-
-    @staticmethod
-    def pp_json(json_data):
-        return json.dumps(json_data, indent=4)
+            for hook_file in hook_files:
+                os.remove(hook_file)
 
     @staticmethod
     def get_vals(info):
@@ -42,8 +35,10 @@ class logDhclient():
         return new_info
 
     def record(self):
-        envs = dict(os.environ)
-        ifc_name = envs.get("interface", envs.get("DEVICE_IFACE", 'foobar'))
+        envs = os.environ
+        ifc_name = envs.get("interface", envs.get("DEVICE_IFACE", None))
+        if ifc_name is None:
+            return
         ifc_file_name = os.path.join(self.hooks_dir, ifc_name + '.json')
         with open(ifc_file_name, 'w') as outfile:
             json.dump(self.get_vals(envs), outfile, indent=4)
@@ -51,6 +46,6 @@ class logDhclient():
 
 
 def main():
-    record = logDhclient()
-    record._check_hooks_dir()
+    record = LogDhclient()
+    record.check_hooks_dir()
     record.record()

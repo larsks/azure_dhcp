@@ -29,9 +29,15 @@ datasource:
     agent_command: __builtin__
 
 If those files are not available, the fallback is to check the leases file
-for the endpoint server (again option 245).  On ubuntu, that can be seen in
-/var/lib/dhcp/dhclient.eth0.leases as a colon delimited hex value (example:
-``option unknown-245 64:41:60:82;`` is 100.65.96.130)
+for the endpoint server (again option 245).
+
+You can define the path to the lease file with the 'dhclient_lease' configuration
+value under system_info: and paths:.  For example:
+
+      dhclient_lease: /var/lib/dhcp/dhclient.eth0.leases
+
+If no configuration value is provided, the dhclient_lease value will fallback to
+/var/lib/dhcp/dhclient.eth0.leases.
 
 walinuxagent
 ------------
