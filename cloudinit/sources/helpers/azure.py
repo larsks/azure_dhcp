@@ -231,6 +231,7 @@ class WALinuxAgentShim(object):
     def _get_value_from_leases_file(lease_file):
         leases = []
         content = util.load_file(lease_file)
+        LOG.debug("content is {}".format(content))
         for line in content.splitlines():
             if 'unknown-245' in line:
                 leases.append(line.strip(' ').split(' ', 2)[-1].strip(';\n"'))
@@ -279,6 +280,7 @@ class WALinuxAgentShim(object):
         LOG.debug("Lease file %s found", lease_file)
         dhcp_options = WALinuxAgentShim._load_dhclient_json()
         value = WALinuxAgentShim._get_value_from_dhcpoptions(dhcp_options)
+        LOG.debug("value is {}".format(value))
         if value is None:
             # Fallback and check the leases file if unsuccessful
             LOG.debug("Unable to find endpoint in dhclient logs. "
@@ -287,7 +289,9 @@ class WALinuxAgentShim(object):
                 LOG.warn("No lease file was specified.")
                 value = None
             else:
-                value = WALinuxAgentShim._get_value_from_leases_file(lease_file)
+                value = WALinuxAgentShim._get_value_from_leases_file(
+                    lease_file)
+                LOG.debug("second value is {}".format(value))
 
         if value is None:
             raise ValueError('No endpoint found.')
