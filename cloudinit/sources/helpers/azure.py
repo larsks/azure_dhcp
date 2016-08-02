@@ -234,6 +234,8 @@ class WALinuxAgentShim(object):
         LOG.debug("content is {}".format(content))
         for line in content.splitlines():
             if 'unknown-245' in line:
+                # Example line from Ubuntu
+                # option unknown-245 a8:3f:81:10;
                 leases.append(line.strip(' ').split(' ', 2)[-1].strip(';\n"'))
         # Return the "most recent" one in the list
         if len(leases) < 1:
@@ -256,7 +258,7 @@ class WALinuxAgentShim(object):
                 dhcp_options[os.path.basename(
                     hook_file).replace('.json', '')] = _file_dict
             except ValueError:
-                LOG.info("%s is not valid JSON data", hook_file)
+                raise ValueError("%s is not valid JSON data", hook_file)
         return dhcp_options
 
     @staticmethod
@@ -305,11 +307,10 @@ class WALinuxAgentShim(object):
         http_client = AzureEndpointHttpClient(self.openssl_manager.certificate)
         LOG.info('Registering with Azure...')
         attempts = 0
-        end_point = self.endpoint
         while True:
             try:
                 response = http_client.get(
-                    'http://{0}/machine/?comp=goalstate'.format(end_point))
+                    'http://{0}/machine/?comp=goalstate'.format(self.endpoint))
             except Exception:
                 if attempts < 10:
                     time.sleep(attempts + 1)

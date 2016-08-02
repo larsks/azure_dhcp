@@ -41,7 +41,8 @@ class LogDhclient():
             return
         ifc_file_name = os.path.join(self.hooks_dir, ifc_name + '.json')
         with open(ifc_file_name, 'w') as outfile:
-            json.dump(self.get_vals(envs), outfile, indent=4)
+            json.dump(self.get_vals(envs), outfile, indent=4,
+                      sort_keys=True, separators=(',', ': '))
             self.LOG.debug("Wrote dhclient options in %s", ifc_file_name)
 
 
