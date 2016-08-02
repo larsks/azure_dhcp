@@ -3,6 +3,6 @@
 #
 
 case "$1:$2" in
-   *:up) exec cloud-init-dhclient-hook ;;
+   *:up) exec python -m cloudinit.cmd.dhclient_hook ;;
    *:down) ;;
 esac

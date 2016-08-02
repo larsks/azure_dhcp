@@ -3,5 +3,5 @@
 # This file is sourced by dhclient so do not prepend 'exec' to the
 # following.
 
-cloud-init-dhclient-hook
+python -m cloudinit.cmd.dhclient_hook
 

@@ -50,3 +50,6 @@ def main():
     record = LogDhclient()
     record.check_hooks_dir()
     record.record()
+
+if __name__ == '__main__':
+    main()
